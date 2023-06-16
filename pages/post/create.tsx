@@ -5,13 +5,31 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { z } from "zod";
 
 export default function MyPage() {
+  const form = z.object({
+    title: z.string().nonempty().max(100).trim(),
+    body: z.string().max(1000).trim(),
+  });
+  type FormData = z.infer<typeof form>;
   const router = useRouter();
-  const [formData, setFormData] = useState({ title: "", body: "" });
+  const [formData, setFormData] = useState<FormData>({ title: "", body: "" });
   const [result, setResult] = useState({});
+  const [error, setError] = useState(false);
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    try {
+      form.parse({
+        title: formData.title,
+        body: formData.body,
+      });
+      setError(false);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setError(true);
+      }
+    }
     fetch("https://dummyjson.com/posts/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -25,7 +43,7 @@ export default function MyPage() {
       .then((res) => setResult(res));
     new Promise(() => {
       setTimeout(() => {
-        router.replace("/");
+        // router.replace("/");
       }, 2000);
     });
   };
@@ -49,13 +67,12 @@ export default function MyPage() {
         />
         <Button type="submit">Submit</Button>
       </form>
-      {Object.keys(result).length ? (
-        <code>
-          {JSON.stringify(result, null, 4)}
-        </code>
+      {Object.keys(result).length && !error ? (
+        <code>{JSON.stringify(result, null, 4)}</code>
       ) : (
         ""
       )}
+      {error ? <code>Missing title</code> : ""}
     </div>
   );
 }
